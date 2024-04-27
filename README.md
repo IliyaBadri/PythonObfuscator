@@ -7,7 +7,7 @@ PythonObfuscator is a Python tool designed to obfuscate Python scripts for educa
 To use PythonObfuscator:
 
 1. Clone this repository to your local machine.
-2. Install the required dependencies by running `pip install -r requirements.txt`.
+2. Install the required dependencies by running `python3 -m pip install -r requirements.txt`.
 3. Run the `obfuscate.py` script and follow the instructions.
 4. Select the Python script you want to obfuscate.
 5. Choose a strength value for obfuscation. Higher values can significantly increase resource usage.
