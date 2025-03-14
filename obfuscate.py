@@ -6,7 +6,17 @@ import re
 import os
 
 class DataManager:
-    read_file = ""
+    file_raw_bytes = bytearray()
+
+    @staticmethod
+    def load_file(filePath: str):
+        chunk_size = 1024
+        with open(filePath, "rb") as file:
+            chunk = file.read(chunk_size)
+            while chunk:
+                DataManager.file_raw_bytes.extend(chunk)
+                chunk = file.read(chunk_size)
+
 
 class Cryptography:
     @staticmethod
@@ -35,9 +45,13 @@ class Cryptography:
         return variable_names
     
     @staticmethod
-    def xor_data_with_key(data: str, encryption_key: str):
-        encryption_key_bytes = base64.b64decode(encryption_key.encode("utf-8"))
-
+    def xor_data_with_key(data: str, key: str):
+        key_bytes = base64.b64decode(key.encode("utf-8"))
+        key_length = len(key_bytes)
+        data_bytes = base64.b64decode(data.encode("utf-8"))
+        output_bytes = bytearray()
+        for i in range(0, len(data_bytes)):
+            xored_byte = data_bytes[i] ^ key_bytes[i % key_length]
 
 class Obfuscator:
     def __init__(self) -> None:
