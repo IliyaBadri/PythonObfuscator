@@ -1,10 +1,43 @@
-from Crypto.Random import get_random_bytes
-from Crypto.Cipher import AES
 import base64
+import random
 import time
 import sys
 import re
 import os
+
+class DataManager:
+    read_file = ""
+
+class Cryptography:
+    @staticmethod
+    def get_encryption_key(length: int = 16) -> str:
+        key_bytes = random.randbytes(length)
+        key = base64.b64encode(key_bytes).decode("utf-8")
+        return key
+
+    @staticmethod
+    def get_variable_name(length: int = 32) -> str:
+        characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        variable_name = ""
+        while len(variable_name) < length:
+            character_index = random.randint(0, len(characters) - 1)
+            variable_name += characters[character_index]
+        return variable_name
+
+    @staticmethod
+    def get_random_variable_name_list(count: int, length: int = 32):
+        variable_names = []
+        while len(variable_names) < count:
+            variable_name = Cryptography.get_variable_name(length)
+            if variable_name in variable_names:
+                continue
+            variable_names.append(variable_name)
+        return variable_names
+    
+    @staticmethod
+    def xor_data_with_key(data: str, encryption_key: str):
+        encryption_key_bytes = base64.b64decode(encryption_key.encode("utf-8"))
+
 
 class Obfuscator:
     def __init__(self) -> None:
