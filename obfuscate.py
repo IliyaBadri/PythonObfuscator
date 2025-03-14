@@ -1,3 +1,4 @@
+import collections
 import base64
 import random
 import time
@@ -5,8 +6,16 @@ import sys
 import re
 import os
 
+# Data manegement
+#
+# unobfuscated_block -> This block contains unobfuscated python script bytes
+#
+# obfuscated_block -> This block contains obfuscated bytes
+
 class DataManager:
-    file_raw_bytes = bytearray()
+    unobfuscated_block = collections.deque()
+    obfuscated_block = collections.deque()
+    file_raw_bytes = collections.deque()
 
     @staticmethod
     def load_file(filePath: str):
@@ -17,6 +26,13 @@ class DataManager:
                 DataManager.file_raw_bytes.extend(chunk)
                 chunk = file.read(chunk_size)
 
+    @staticmethod
+    def pop_from_raw_file_bytes() -> int | None:
+        try:
+            byte = DataManager.file_raw_bytes.popleft()
+            return byte
+        except:
+            return None
 
 class Cryptography:
     @staticmethod
@@ -54,6 +70,16 @@ class Cryptography:
             xored_byte = data_bytes[i] ^ key_bytes[i % key_length]
 
 class Obfuscator:
+
+    @staticmethod
+    def obfuscate_file():
+        key = 
+        file_chunk = bytearray()
+        popped_byte = DataManager.pop_from_raw_file_bytes()
+        while popped_byte != None:
+            file_chunk.e
+            popped_byte = DataManager.pop_from_raw_file_bytes()
+        
     def __init__(self) -> None:
         pass
 
