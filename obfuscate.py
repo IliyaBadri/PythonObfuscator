@@ -10,29 +10,60 @@ import os
 #
 # unobfuscated_block -> This block contains unobfuscated python script bytes
 #
-# obfuscated_block -> This block contains obfuscated bytes
+# obfuscated_block -> This block contains obfuscated bytes that are base64 encoded
 
 class DataManager:
+    CHUNK_SIZE = 340 * 3 # Must be a multiple of 3 (For base64 encoding)
     unobfuscated_block = collections.deque()
     obfuscated_block = collections.deque()
-    file_raw_bytes = collections.deque()
 
     @staticmethod
-    def load_file(filePath: str):
-        chunk_size = 1024
-        with open(filePath, "rb") as file:
-            chunk = file.read(chunk_size)
-            while chunk:
-                DataManager.file_raw_bytes.extend(chunk)
-                chunk = file.read(chunk_size)
-
-    @staticmethod
-    def pop_from_raw_file_bytes() -> int | None:
+    def load_file_into_unobfuscated_block(filePath: str):
+        file = open(filePath, "rb")
         try:
-            byte = DataManager.file_raw_bytes.popleft()
-            return byte
-        except:
+            chunk = file.read(DataManager.CHUNK_SIZE)
+            while chunk != b"":
+                DataManager.obfuscated_block.extend(chunk)
+                chunk = file.read(DataManager.CHUNK_SIZE)
+        finally:
+            file.close()
+
+    @staticmethod
+    def pop_from_unobfuscated_block() -> int | None:
+        if len(DataManager.unobfuscated_block) <= 0:
             return None
+        return DataManager.unobfuscated_block.popleft()
+
+    def get_unobfuscated_block_length() -> int:
+        return len(DataManager.unobfuscated_block)
+
+    def is_unobfuscated_block_empty() -> bool:
+        return len(DataManager.unobfuscated_block) <= 0
+
+    @staticmethod
+    def clear_obfuscated_block():
+        DataManager.obfuscated_block.clear()
+
+    @staticmethod
+    def write_chunk_to_obfuscated_block(chunk: bytearray):
+        DataManager.obfuscated_block.extend(chunk)
+
+    @staticmethod
+    def move_obfuscated_block_to_unobfuscated_block():
+        DataManager.unobfuscated_block.clear()
+        for _ in range(len(DataManager.obfuscated_block)):
+            DataManager.unobfuscated_block.append(DataManager.obfuscated_block.popleft())
+
+    @staticmethod
+    def write_obfuscated_block_to_file(filePath: str):
+        file = open(filePath, "wb")
+        try:
+            for _ in range(len(DataManager.obfuscated_block)):
+                if(len(DataManager.obfuscated_block) == 0):
+                    break
+                file.write(bytes([DataManager.obfuscated_block.popleft()])) 
+        finally:
+            file.close()
 
 class Cryptography:
     @staticmethod
@@ -59,180 +90,59 @@ class Cryptography:
                 continue
             variable_names.append(variable_name)
         return variable_names
-    
-    @staticmethod
-    def xor_data_with_key(data: str, key: str):
-        key_bytes = base64.b64decode(key.encode("utf-8"))
-        key_length = len(key_bytes)
-        data_bytes = base64.b64decode(data.encode("utf-8"))
-        output_bytes = bytearray()
-        for i in range(0, len(data_bytes)):
-            xored_byte = data_bytes[i] ^ key_bytes[i % key_length]
 
 class Obfuscator:
+    @staticmethod 
+    def obfuscate_current_layer():
+        DataManager.clear_obfuscated_block()
 
-    @staticmethod
-    def obfuscate_file():
-        key = 
-        file_chunk = bytearray()
-        popped_byte = DataManager.pop_from_raw_file_bytes()
-        while popped_byte != None:
-            file_chunk.e
-            popped_byte = DataManager.pop_from_raw_file_bytes()
+        key = Cryptography.get_encryption_key()
+        key_bytes = base64.b64decode(key.encode("utf-8"))
+        key_length = len(key_bytes)
+
+        variable_names = Cryptography.get_random_variable_name_list(5)
+
+        code_block_1 = f"""import base64
+{variable_names[0]} = base64.b64decode("{key}".encode("utf-8"))
+{variable_names[1]} = \""""
+
+        code_block_1_bytes = code_block_1.encode("utf-8")
+        DataManager.write_chunk_to_obfuscated_block(code_block_1_bytes)
+
+        current_xored_chunk = bytearray()
+        for i in range(DataManager.get_unobfuscated_block_length()):
+            if(DataManager.is_unobfuscated_block_empty()):
+                break
+
+            current_unobfuscated_byte = DataManager.pop_from_unobfuscated_block()
+            current_xored_chunk.append(current_unobfuscated_byte[i] ^ key_bytes[i % key_length])
+
+            if DataManager.is_unobfuscated_block_empty() or len(current_xored_chunk) == 3:
+                base64_chunk = base64.b64encode(current_xored_chunk)
+                DataManager.write_chunk_to_obfuscated_block(base64_chunk)
+                current_xored_chunk.clear()
         
-    def __init__(self) -> None:
-        pass
+        code_block_2 = f"""\"
+if __name__ == "__main__":
+    {variable_names[2]} = base64.b64decode({variable_names[1]}.encode("utf-8"))
+    {variable_names[3]} = bytearray()
+    for {variable_names[4]} in range({variable_names[2]}):
+        {variable_names[3]}.append({variable_names[2]}[{variable_names[4]}] ^ {variable_names[0]}[i % len({variable_names[0]})])
+    exec({variable_names[3]}.decode("utf-8"))
+"""
+        code_block_2_bytes = code_block_2.encode("utf-8")
+        DataManager.write_chunk_to_obfuscated_block(code_block_2_bytes)
 
-    def GetObfuscatedVariableName(self) -> str:
-        randomBase64String = base64.b64encode(get_random_bytes(32)).decode('utf-8')
-        formattedVariableCharacters = re.findall(r'[a-zA-Z]+', randomBase64String)
-        variableName = "".join(formattedVariableCharacters)
-        return variableName
+    def obfuscate_in_layers(layer_count: int):
+        for i in range(layer_count):
+            print(f"[+] Obfuscating layer {i + 1} / {layer_count} . . .")
+            obfuscate_current_layer()
+            if i == layer_count - 1:
+                break
+            DataManager.move_obfuscated_block_to_unobfuscated_block()
+
     
-    def Obfuscate(self, code: str) -> str:
-        codeLength = len(code)
-        spacesNeeded = 16 - (codeLength % 16)
-        paddedCode = code + ' ' * spacesNeeded
-
-        iv = get_random_bytes(16)
-        key = get_random_bytes(16)
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        try:
-            encryptedCode = cipher.encrypt(paddedCode.encode('utf-8'))
-        except:
-            print("Error: There was an error while encrypting the code")
-            sys.exit(1)
-                  
-
-        encodedCode = base64.b64encode(encryptedCode).decode('utf-8')
-        encodedKey = base64.b64encode(key).decode('utf-8')
-        encodedIv = base64.b64encode(iv).decode('utf-8')
-
-        encodedCodeVariableName = self.GetObfuscatedVariableName()
-        encodedKeyVariableName = self.GetObfuscatedVariableName()
-        encodedIvVariableName = self.GetObfuscatedVariableName()
-
-        keyVariableName = self.GetObfuscatedVariableName()
-        ivVariableName = self.GetObfuscatedVariableName()
-        encryptedCodeVariableName = self.GetObfuscatedVariableName()
-        cipherVariableName = self.GetObfuscatedVariableName()
-        decryptedCodeVariableName = self.GetObfuscatedVariableName()
-
-        obfuscatedCode = f"""
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
-import base64
-
-{encodedCodeVariableName} = '{encodedCode}'
-{encodedKeyVariableName} = '{encodedKey}'
-{encodedIvVariableName} = '{encodedIv}'
-
-{encryptedCodeVariableName} = base64.b64decode({encodedCodeVariableName})
-{keyVariableName} = base64.b64decode({encodedKeyVariableName})
-{ivVariableName} = base64.b64decode({encodedIvVariableName})
-
-{cipherVariableName} = AES.new({keyVariableName}, AES.MODE_CBC, {ivVariableName})
-{decryptedCodeVariableName} = {cipherVariableName}.decrypt({encryptedCodeVariableName}).rstrip()
-exec({decryptedCodeVariableName}.decode('utf-8'))
-        """
-
-        return obfuscatedCode
-
-    def MultilayerObfuscate(self, code: str, layers: int):
-
-        currentCode = code
-
-        for i in range(layers):
-            currentCode = self.Obfuscate(currentCode)
-            layerStatus = f"Layer ({str(i+1)} / {str(layers)}) {str(round(((i + 1) / layers) * 100))}%"
-            print(layerStatus)
-
-        return currentCode
-
-
-class DiskManager:
-    def __init__(self) -> None:
-        pass
-
-    def GetFilesInDirectory(self, directory) -> list:
-        files = []
-        for file in os.listdir(directory):
-            filePath = os.path.join(directory, file)
-            if os.path.isfile(filePath):
-                files.append(file)
-        return files
-    
-
 class OperationManager:
-    version = "1.0.1"
-    author = "IliyaBadri"
-
-    def __init__(self) -> None:
-        pass
-
-    def SendStart(self) -> None:
-        print(f"Python Obfuscator v{self.version}")
-        print(f"This is an open-source free tool developed by {self.author}.")
-        disclaimer = """This tool is for educational purposes only. Exercise caution when using it. It may alter code readability and does not guarantee security. Use at your own risk. No warranties provided. Developers are not liable for any damages."""
-        print(f"Disclaimer:\n{disclaimer}")
-
-    def GetStrength(self) -> int:
-        strengthGuide = """
-Please provide a strength value number for obfuscation.
-You can enter any number above 0.
-Note: Strength values above 35 can be really resource intensive. please make sure you have a decent amount of ram available.
-        """
-        print(strengthGuide)
-        strengthString = input("Please enter an obfuscation strength value: ")
-    
-        if not strengthString.isdigit():
-            print("Error: Your strength value was not valid.")
-            return self.GetStrength(self)
-        
-        strength = int(strengthString)
-
-        if strength < 1:
-            print("Error: Your strength value must be 1 or more than 1.")
-            return self.GetStrength(self)
-        
-        return strength
-
-    def GetInputFile(self) -> str:
-        currentPath = os.getcwd()
-        diskManager = DiskManager()
-        files = diskManager.GetFilesInDirectory(currentPath)
-        filesStringList = ""
-
-        fileCount = 0
-        for file in files:
-            filesStringList += f"{str(fileCount)}) {file}\n"
-            fileCount += 1
-
-        promptString = f"""
-List of file(s) inside {os.path.abspath(currentPath)}
---- total {str(len(files))} file(s) ---
-{filesStringList}
---- indexes from 0 to {str(fileCount)} ---
-        """
-
-        print(promptString)
-
-        selectedIndexString = input("Please enter the index of the file you want to obfuscate: ")
-
-        if not selectedIndexString.isdigit():
-            print("Error: Please enter a number as the input.")
-            return self.GetInputFile()
-        
-        selectedIndex = int(selectedIndexString)
-
-        if 0 > selectedIndex or selectedIndex > fileCount:
-            print(f"Error: Please enter a number between 0 and {str(fileCount)}.")
-            return self.GetInputFile()
-
-        selectedFile = files[selectedIndex]
-
-        return os.path.abspath(os.path.join(currentPath, selectedFile))
-
     def SaveOutput(self, output: str) -> None:
         currentTimestamp = time.time()
         fileName = f"out-{str(int(currentTimestamp))}.py"
@@ -248,27 +158,70 @@ List of file(s) inside {os.path.abspath(currentPath)}
             print("Error: we couldn't save the output to a file")
             sys.exit(1)
         
+    
+def main():
+    print("[+] Python Obfuscator v1.1.0")
+    print("[+] This is an open-source free tool developed by IliyaBadri.")
+    print("[+] In order for this tool to work correctly, your python project must be all in one single python script (.py) file.")
+    entered_file_path = input("[>] Please enter the path to your python script file you wish to obfuscate:")
+
+    input_file_path = os.path.abspath(entered_file_path)
+    
+    if not os.path.isfile(input_file_path):
+        print(f"[-] ({filePath}) is not a file.")
+        print("[-] Terminating.")
+        sys.exit(1)
+        return
+
+    if not os.access(input_file_path, os.R_OK):
+        print(f"[-] Couldn't open the file at ({filePath}) in read mode.")
+        print("[-] Terminating.")
+        sys.exit(1)
+        return
+
+    print(f"[+] ({input_file_path}) will be obfuscated.")
+    print("[+] You must now provide the layer count for obfuscation.")
+    print("[+] You can enter any number above 0. This number will correspond to how many layers of obfuscation, your code will be wrapped in.")
+    print("[+] Strength values above 35 can be resource intensive. Please make sure you have a decent amount of ram available.")
+    entered_obfuscation_layer_count = input("[>] Obfuscation layer count:")
+
+    if not entered_obfuscation_layer_count.isdigit():
+        print(f"[-] Obfuscation layer count must be a number.")
+        print("[-] Terminating.")
+        sys.exit(1)
+        return
+
+    obfuscation_layer_count = int(entered_obfuscation_layer_count)
+
+    if obfuscation_layer_count <= 0:
+        print(f"[-] Obfuscation layer count must be a (non-zero) positive number.")
+        print("[-] Terminating.")
+        sys.exit(1)
+        return
+
+    DataManager.load_file_into_unobfuscated_block(input_file_path)
+
+    obfuscate_in_layers(obfuscation_layer_count)
+
+    print("[+] Obfuscation complete.")
+
+    current_timestamp = time.time()
+    output_file_name = f"out-{str(int(current_timestamp))}.py"
+    output_file_path = os.path.abspath(f"./{output_file_name}")
+    output_file_directory = os.path.dirname(output_file_path)
+
+    print(f"[+] Saving output to ({output_file_path}) . . .")
+
+    if not os.access(output_file_directory, os.W_OK):
+        print(f"[-] Couldn't create the file at ({output_file_path}).")
+        print("[-] Terminating.")
+        sys.exit(1)
+        return
+
+    DataManager.write_obfuscated_block_to_file(output_file_path)
 
 
 if __name__ == '__main__':
-    operationManager = OperationManager()
-    operationManager.SendStart()
-
-    originalFilePath = operationManager.GetInputFile()
-    try:
-        originalFile = open(originalFilePath, "r")
-        originalScript = originalFile.read()
-    except:
-        print("Error: couldn't open the selected file.")
-        sys.exit(1)
-
-    strength = operationManager.GetStrength()
-    
-    obfuscator = Obfuscator()
-
-    obfuscatedCode = obfuscator.MultilayerObfuscate(originalScript, strength)
-
-    operationManager.SaveOutput(obfuscatedCode)
-
+    main()
     sys.exit(0)
     
