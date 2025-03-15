@@ -1,33 +1,50 @@
 # PythonObfuscator
 
-PythonObfuscator is a Python tool designed to obfuscate Python scripts for educational and experimental purposes. It utilizes AES encryption and randomization techniques to obscure code, potentially altering its readability and making it harder to understand. Please exercise caution when using it and be aware that it does not guarantee security.
+## Overview
 
-## How to Use
+This is an open-source Python obfuscation tool. It transforms Python scripts into obfuscated versions by applying multiple layers of XOR-based encoding with dynamically generated keys. The obfuscator does **not require any external dependencies**, making it lightweight and easy to use.
 
-To use PythonObfuscator:
+## Features
 
-1. Clone this repository to your local machine.
-2. Install the required dependencies by running `python3 -m pip install -r requirements.txt`.
-3. Run the `obfuscate.py` script and follow the instructions.
-4. Select the Python script you want to obfuscate.
-5. Choose a strength value for obfuscation. Higher values can significantly increase resource usage.
-6. The obfuscated code will be saved as `out-[timestamp].py` in the current directory.
+-   No external dependencies required
+-   Multi-layer obfuscation for enhanced security and protection against automated de-obfuscation tools
+-   XOR encryption with base64 encoding
+-   Dynamically generated variable names and encryption keys
+-   File I/O operations with error handling
 
-## Disclaimer
+## How It Works
 
-This tool is provided for educational purposes only. It may alter code readability and does not guarantee security. Use at your own risk. No warranties are provided. Developers are not liable for any damages.
+1.  Reads the input Python script.
+2.  Encrypts the script content using XOR encryption with a randomly generated key.
+3.  Encodes the encrypted content in base64 format.
+4.  Wraps the encoded content in a self-decoding Python script.
+5.  Repeats the process for the specified number of layers.
+6.  Outputs an obfuscated Python script that self-deciphers when executed.
 
-## Requirements
+## Installation
 
-- Python 3.x
-- pycryptodome
+No installation is required! The script runs on any system with Python installed (Python 3 recommended).
 
 ## Usage
 
-```python
-python obfuscate.py
+Run the script and follow the prompts:
+
+```bash
+python obfuscator.py
 ```
 
-## License
+### Steps
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+1.  Enter the path to your Python script.
+2.  Choose the number of obfuscation layers (recommended: 1-10).
+3.  The obfuscated script is saved in the current directory as `out-<timestamp>.py`.
+
+## Notes
+
+-   This tool is intended for educational purposes and lightweight obfuscation.
+-   While obfuscation makes reverse-engineering harder, it does **not** provide true security and is not bullet-proof.
+-   Excessive layering may impact execution performance of the original script. (It takes some time for the layers to be unwrapped one by one during execution)
+
+## License
+This project is open-source and free to use and is licensed under the MIT license.
+
