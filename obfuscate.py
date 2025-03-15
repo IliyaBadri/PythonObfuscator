@@ -1,6 +1,7 @@
 import collections
 import base64
 import random
+import typing
 import time
 import sys
 import re
@@ -13,30 +14,32 @@ import os
 # obfuscated_block -> This block contains obfuscated bytes that are base64 encoded
 
 class DataManager:
-    CHUNK_SIZE = 340 * 3 # Must be a multiple of 3 (For base64 encoding)
     unobfuscated_block = collections.deque()
     obfuscated_block = collections.deque()
 
     @staticmethod
-    def load_file_into_unobfuscated_block(filePath: str):
-        file = open(filePath, "rb")
+    def load_file_into_unobfuscated_block(file_path: str):
+        CHUNK_SIZE = 1024
+        file = open(file_path, "rb")
         try:
-            chunk = file.read(DataManager.CHUNK_SIZE)
+            chunk = file.read(CHUNK_SIZE)
             while chunk != b"":
-                DataManager.obfuscated_block.extend(chunk)
-                chunk = file.read(DataManager.CHUNK_SIZE)
+                DataManager.unobfuscated_block.extend(chunk)
+                chunk = file.read(CHUNK_SIZE)
         finally:
             file.close()
 
     @staticmethod
-    def pop_from_unobfuscated_block() -> int | None:
+    def pop_from_unobfuscated_block() -> typing.Optional[int]:
         if len(DataManager.unobfuscated_block) <= 0:
             return None
         return DataManager.unobfuscated_block.popleft()
 
+    @staticmethod
     def get_unobfuscated_block_length() -> int:
         return len(DataManager.unobfuscated_block)
 
+    @staticmethod
     def is_unobfuscated_block_empty() -> bool:
         return len(DataManager.unobfuscated_block) <= 0
 
@@ -51,8 +54,7 @@ class DataManager:
     @staticmethod
     def move_obfuscated_block_to_unobfuscated_block():
         DataManager.unobfuscated_block.clear()
-        for _ in range(len(DataManager.obfuscated_block)):
-            DataManager.unobfuscated_block.append(DataManager.obfuscated_block.popleft())
+        DataManager.unobfuscated_block.extend(DataManager.obfuscated_block)
 
     @staticmethod
     def write_obfuscated_block_to_file(filePath: str):
@@ -68,7 +70,9 @@ class DataManager:
 class Cryptography:
     @staticmethod
     def get_encryption_key(length: int = 16) -> str:
-        key_bytes = random.randbytes(length)
+        key_bytes = bytearray()
+        for _ in range(length):
+            key_bytes.append(random.getrandbits(8))
         key = base64.b64encode(key_bytes).decode("utf-8")
         return key
 
@@ -76,7 +80,7 @@ class Cryptography:
     def get_variable_name(length: int = 32) -> str:
         characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         variable_name = ""
-        while len(variable_name) < length:
+        for _ in range(length):
             character_index = random.randint(0, len(characters) - 1)
             variable_name += characters[character_index]
         return variable_name
@@ -115,7 +119,7 @@ class Obfuscator:
                 break
 
             current_unobfuscated_byte = DataManager.pop_from_unobfuscated_block()
-            current_xored_chunk.append(current_unobfuscated_byte[i] ^ key_bytes[i % key_length])
+            current_xored_chunk.append(current_unobfuscated_byte ^ key_bytes[i % key_length])
 
             if DataManager.is_unobfuscated_block_empty() or len(current_xored_chunk) == 3:
                 base64_chunk = base64.b64encode(current_xored_chunk)
@@ -126,39 +130,22 @@ class Obfuscator:
 if __name__ == "__main__":
     {variable_names[2]} = base64.b64decode({variable_names[1]}.encode("utf-8"))
     {variable_names[3]} = bytearray()
-    for {variable_names[4]} in range({variable_names[2]}):
-        {variable_names[3]}.append({variable_names[2]}[{variable_names[4]}] ^ {variable_names[0]}[i % len({variable_names[0]})])
+    for {variable_names[4]} in range(len({variable_names[2]})):
+        {variable_names[3]}.append({variable_names[2]}[{variable_names[4]}]^{variable_names[0]}[{variable_names[4]} % len({variable_names[0]})])
     exec({variable_names[3]}.decode("utf-8"))
 """
         code_block_2_bytes = code_block_2.encode("utf-8")
         DataManager.write_chunk_to_obfuscated_block(code_block_2_bytes)
 
+    @staticmethod
     def obfuscate_in_layers(layer_count: int):
         for i in range(layer_count):
             print(f"[+] Obfuscating layer {i + 1} / {layer_count} . . .")
-            obfuscate_current_layer()
+            Obfuscator.obfuscate_current_layer()
             if i == layer_count - 1:
                 break
             DataManager.move_obfuscated_block_to_unobfuscated_block()
 
-    
-class OperationManager:
-    def SaveOutput(self, output: str) -> None:
-        currentTimestamp = time.time()
-        fileName = f"out-{str(int(currentTimestamp))}.py"
-        print(f"Saving as {fileName} . . .")
-
-        try:
-            theoutputfile = open(file=fileName, mode="w")
-            theoutputfile.write(output)
-            theoutputfile.close()
-
-            return
-        except:
-            print("Error: we couldn't save the output to a file")
-            sys.exit(1)
-        
-    
 def main():
     print("[+] Python Obfuscator v1.1.0")
     print("[+] This is an open-source free tool developed by IliyaBadri.")
@@ -168,13 +155,13 @@ def main():
     input_file_path = os.path.abspath(entered_file_path)
     
     if not os.path.isfile(input_file_path):
-        print(f"[-] ({filePath}) is not a file.")
+        print(f"[-] ({input_file_path}) is not a file.")
         print("[-] Terminating.")
         sys.exit(1)
         return
 
     if not os.access(input_file_path, os.R_OK):
-        print(f"[-] Couldn't open the file at ({filePath}) in read mode.")
+        print(f"[-] Couldn't open the file at ({input_file_path}) in read mode.")
         print("[-] Terminating.")
         sys.exit(1)
         return
@@ -201,7 +188,7 @@ def main():
 
     DataManager.load_file_into_unobfuscated_block(input_file_path)
 
-    obfuscate_in_layers(obfuscation_layer_count)
+    Obfuscator.obfuscate_in_layers(obfuscation_layer_count)
 
     print("[+] Obfuscation complete.")
 
